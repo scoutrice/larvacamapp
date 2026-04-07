@@ -73,7 +73,7 @@ fun RegistrationScreen(
                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.dimensions.spacingSmall)
                 ) {
                     Text(
-                        text = "Register",
+                        text = "LarvaCam Register",
                         style = MaterialTheme.typography.displayMedium,
                         color = MaterialTheme.colors.textPrimary
                     )
