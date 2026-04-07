@@ -7,12 +7,10 @@ import com.vci.vectorcamapp.core.domain.cache.CurrentSessionCache
 import com.vci.vectorcamapp.core.domain.cache.DefaultIntakeFieldsCache
 import com.vci.vectorcamapp.core.domain.cache.DeviceCache
 import com.vci.vectorcamapp.core.domain.model.Collector
-import com.vci.vectorcamapp.core.domain.model.SurveillanceForm
 import com.vci.vectorcamapp.core.domain.model.enums.SessionType
 import com.vci.vectorcamapp.core.domain.repository.CollectorRepository
 import com.vci.vectorcamapp.core.domain.repository.SessionRepository
 import com.vci.vectorcamapp.core.domain.repository.SiteRepository
-import com.vci.vectorcamapp.core.domain.repository.SurveillanceFormRepository
 import com.vci.vectorcamapp.core.domain.util.Result
 import com.vci.vectorcamapp.core.domain.util.errorOrNull
 import com.vci.vectorcamapp.core.domain.util.onError
@@ -25,13 +23,11 @@ import com.vci.vectorcamapp.intake.domain.use_cases.IntakeValidationUseCases
 import com.vci.vectorcamapp.intake.domain.util.IntakeError
 import com.vci.vectorcamapp.intake.logging.IntakeSentryLogger
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -49,7 +45,6 @@ class IntakeViewModel @Inject constructor(
     private val currentSessionCache: CurrentSessionCache,
     private val defaultIntakeFieldsCache: DefaultIntakeFieldsCache,
     private val siteRepository: SiteRepository,
-    private val surveillanceFormRepository: SurveillanceFormRepository,
     private val sessionRepository: SessionRepository,
     private val locationRepository: LocationRepository,
     private val collectorRepository: CollectorRepository,
@@ -91,7 +86,6 @@ class IntakeViewModel @Inject constructor(
 
                 IntakeAction.SubmitIntakeForm -> {
                     val session = _state.value.session
-                    val surveillanceForm = _state.value.surveillanceForm
 
                     val collectorValidationResult =
                         intakeValidationUseCases.validateCollector(session.collectorName, session.collectorTitle)
@@ -101,35 +95,12 @@ class IntakeViewModel @Inject constructor(
                         intakeValidationUseCases.validateVillageName(_state.value.selectedVillageName)
                     val houseNumberResult =
                         intakeValidationUseCases.validateHouseNumber(_state.value.selectedHouseNumber)
-                    val llinTypeResult =
-                        surveillanceForm?.llinType?.let { intakeValidationUseCases.validateLlinType(it) }
-                    val llinBrandResult =
-                        surveillanceForm?.llinBrand?.let { intakeValidationUseCases.validateLlinBrand(it) }
                     val collectionDateResult =
                         intakeValidationUseCases.validateCollectionDate(session.collectionDate)
                     val collectionMethodResult =
                         intakeValidationUseCases.validateCollectionMethod(session.collectionMethod)
                     val specimenConditionResult =
                         intakeValidationUseCases.validateSpecimenCondition(session.specimenCondition)
-                    val numPeopleSleptInHouseResult =
-                        surveillanceForm?.let {
-                            intakeValidationUseCases.validateNumPeopleSleptInHouse(it.numPeopleSleptInHouse)
-                        }
-
-                    val monthsSinceIrsResult =
-                        surveillanceForm?.takeIf { it.wasIrsConducted && it.monthsSinceIrs != null }?.let {
-                            it.monthsSinceIrs?.let { months -> intakeValidationUseCases.validateMonthsSinceIrs(months) }
-                        }
-
-                    val numLlinsAvailableResult =
-                        surveillanceForm?.let {
-                            intakeValidationUseCases.validateNumLlinsAvailable(it.numLlinsAvailable)
-                        }
-
-                    val numPeopleSleptUnderLlinResult =
-                        surveillanceForm?.numPeopleSleptUnderLlin?.let {
-                            intakeValidationUseCases.validateNumPeopleSleptUnderLlin(it)
-                        }
 
 
                     _state.update {
@@ -139,15 +110,9 @@ class IntakeViewModel @Inject constructor(
                                 district = districtResult.errorOrNull(),
                                 villageName = villageNameResult.errorOrNull(),
                                 houseNumber = houseNumberResult.errorOrNull(),
-                                llinType = llinTypeResult?.errorOrNull(),
-                                llinBrand = llinBrandResult?.errorOrNull(),
                                 collectionDate = collectionDateResult.errorOrNull(),
                                 collectionMethod = collectionMethodResult.errorOrNull(),
                                 specimenCondition = specimenConditionResult.errorOrNull(),
-                                monthsSinceIrs = monthsSinceIrsResult?.errorOrNull(),
-                                numLlinsAvailable = numLlinsAvailableResult?.errorOrNull(),
-                                numPeopleSleptUnderLlin = numPeopleSleptUnderLlinResult?.errorOrNull(),
-                                numPeopleSleptInHouse = numPeopleSleptInHouseResult?.errorOrNull(),
                             )
                         )
                     }
@@ -157,15 +122,9 @@ class IntakeViewModel @Inject constructor(
                         districtResult,
                         villageNameResult,
                         houseNumberResult,
-                        llinTypeResult,
-                        llinBrandResult,
                         collectionDateResult,
                         collectionMethodResult,
                         specimenConditionResult,
-                        monthsSinceIrsResult,
-                        numLlinsAvailableResult,
-                        numPeopleSleptInHouseResult,
-                        numPeopleSleptUnderLlinResult
                     ).any { it is Result.Error }
 
                     if (hasError) {
@@ -195,17 +154,6 @@ class IntakeViewModel @Inject constructor(
                                 return@runAsTransaction false
                             }
 
-                            val surveillanceFormResult = surveillanceForm?.let {
-                                surveillanceFormRepository.upsertSurveillanceForm(
-                                    surveillanceForm, session.localId
-                                )
-                            } ?: Result.Success(Unit)
-
-                            surveillanceFormResult.onError { error ->
-                                emitError(error)
-                                IntakeSentryLogger.logSurveillanceFormUpsertFailed(Exception(error.name), session.localId)
-                                return@runAsTransaction false
-                            }
                             true
                         }
 
@@ -277,111 +225,6 @@ class IntakeViewModel @Inject constructor(
                     }
                 }
 
-                is IntakeAction.EnterNumPeopleSleptInHouse -> {
-                    val oldValue = _state.value.surveillanceForm?.numPeopleSleptInHouse
-                    val normalized = normalizeNumericInput(oldValue, action.count)
-                    val numPeopleSleptInHouse = normalized.toIntOrNull() ?: -1
-                    _state.update {
-                        it.copy(
-                            surveillanceForm = it.surveillanceForm?.copy(
-                                numPeopleSleptInHouse = numPeopleSleptInHouse
-                            )
-                        )
-                    }
-                }
-
-                is IntakeAction.ToggleIrsConducted -> {
-                    val wasIrsConducted = action.isChecked
-                    _state.update {
-                        it.copy(
-                            surveillanceForm = it.surveillanceForm?.copy(
-                                wasIrsConducted = wasIrsConducted,
-                                monthsSinceIrs = if (wasIrsConducted) -1 else null
-                            )
-                        )
-                    }
-                }
-
-                is IntakeAction.EnterMonthsSinceIrs -> {
-                    val oldValue = _state.value.surveillanceForm?.monthsSinceIrs
-                    val normalized = normalizeNumericInput(oldValue, action.count)
-                    val monthsSinceIrs = normalized.toIntOrNull() ?: -1
-                    _state.update {
-                        it.copy(
-                            surveillanceForm = it.surveillanceForm?.copy(
-                                monthsSinceIrs = monthsSinceIrs
-                            )
-                        )
-                    }
-                }
-
-
-                is IntakeAction.EnterNumLlinsAvailable -> {
-                    val oldValue = _state.value.surveillanceForm?.numLlinsAvailable
-                    val normalized = normalizeNumericInput(oldValue, action.count)
-                    val numLlinsAvailable = normalized.toIntOrNull() ?: -1
-                    _state.update {
-                        it.copy(
-                            surveillanceForm = it.surveillanceForm?.copy(
-                                numLlinsAvailable = numLlinsAvailable
-                            )
-                        )
-                    }
-                    if (numLlinsAvailable <= 0) {
-                        _state.update {
-                            it.copy(
-                                surveillanceForm = it.surveillanceForm?.copy(
-                                    llinType = null,
-                                    llinBrand = null,
-                                    numPeopleSleptUnderLlin = null
-                                )
-                            )
-                        }
-                    } else {
-                        _state.update {
-                            it.copy(
-                                surveillanceForm = it.surveillanceForm?.copy(
-                                    llinType = "", numPeopleSleptUnderLlin = -1
-                                )
-                            )
-                        }
-                    }
-                }
-
-                is IntakeAction.SelectLlinType -> {
-                    _state.update {
-                        it.copy(
-                            surveillanceForm = it.surveillanceForm?.copy(
-                                llinType = action.option.label,
-                                llinBrand = ""
-                            )
-                        )
-                    }
-                }
-
-                is IntakeAction.SelectLlinBrand -> {
-                    _state.update {
-                        it.copy(
-                            surveillanceForm = it.surveillanceForm?.copy(
-                                llinBrand = action.option.label
-                            )
-                        )
-                    }
-                }
-
-                is IntakeAction.EnterNumPeopleSleptUnderLlin -> {
-                    val oldValue = _state.value.surveillanceForm?.numPeopleSleptUnderLlin
-                    val normalized = normalizeNumericInput(oldValue, action.count)
-                    val numPeopleSleptUnderLlin = normalized.toIntOrNull() ?: -1
-                    _state.update {
-                        it.copy(
-                            surveillanceForm = it.surveillanceForm?.copy(
-                                numPeopleSleptUnderLlin = numPeopleSleptUnderLlin
-                            )
-                        )
-                    }
-                }
-
                 is IntakeAction.PickCollectionDate -> {
                     _state.update {
                         it.copy(
@@ -440,6 +283,10 @@ class IntakeViewModel @Inject constructor(
 
                 is IntakeAction.HideCollectionMethodTooltipDialog -> {
                     _state.update { it.copy(isCollectionMethodTooltipVisible = false) }
+                }
+
+                is IntakeAction.SelectAreaType -> {
+                    _state.update { it.copy(areaType = action.areaType) }
                 }
 
                 is IntakeAction.RegisterMissingCollector -> {
@@ -514,11 +361,8 @@ class IntakeViewModel @Inject constructor(
 
             combine(
                 siteRepository.observeAllSitesByProgramId(programId),
-                currentSession?.let {
-                    surveillanceFormRepository.observeSurveillanceFormBySessionId(it.localId)
-                } ?: flowOf<SurveillanceForm?>(null),
                 collectorRepository.observeAllCollectors()
-            ) { currentAllSites, currentSavedForm, currentAllCollectors ->
+            ) { currentAllSites, currentAllCollectors ->
 
                 val validatedSite = currentAllSites.find { it.id == currentSessionSiteId }
 
@@ -557,7 +401,6 @@ class IntakeViewModel @Inject constructor(
                     it.copy(
                         isLoading = false,
                         session = effectiveSession,
-                        surveillanceForm = currentSavedForm ?: surveillanceFormWorkflow.createNewSurveillanceForm(),
                         allSitesInProgram = currentAllSites,
                         allCollectors = currentAllCollectors,
                         selectedDistrict = validatedDistrict,
@@ -578,10 +421,6 @@ class IntakeViewModel @Inject constructor(
                 withTimeout(LOCATION_TIMEOUT_MS) {
                     locationRepository.getCurrentLocation()
                 }
-            } catch (e: SecurityException) {
-                Result.Error(IntakeError.LOCATION_PERMISSION_DENIED)
-            } catch (e: TimeoutCancellationException) {
-                Result.Error(IntakeError.LOCATION_GPS_TIMEOUT)
             } catch (e: Exception) {
                 IntakeSentryLogger.logLocationFetchFailed(e)
                 Result.Error(IntakeError.UNKNOWN_ERROR)
@@ -604,18 +443,5 @@ class IntakeViewModel @Inject constructor(
                 }
             }
         }
-    }
-
-    private fun normalizeNumericInput(oldValue: Int?, newValue: String): String {
-        val oldValueString = (oldValue ?: 0).toString()
-        val filteredNewValue = newValue.filter { it.isDigit() }
-
-        val finalValueString = if (oldValueString == "0" && filteredNewValue.length > 1) {
-                filteredNewValue.filter { it != '0' }
-            } else {
-                filteredNewValue
-            }
-
-        return finalValueString.toIntOrNull().toString()
     }
 }

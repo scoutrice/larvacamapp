@@ -37,7 +37,6 @@ data class IntakeState(
         longitude = null,
         type = SessionType.SURVEILLANCE,
     ),
-    val surveillanceForm: SurveillanceForm? = null,
     val intakeErrors: IntakeErrors = IntakeErrors(
         collector = null,
         district = null,
@@ -54,4 +53,5 @@ data class IntakeState(
         numPeopleSleptInHouse = null,
     ),
     val isCollectionMethodTooltipVisible: Boolean = false,
+    val areaType: String = ""
 )

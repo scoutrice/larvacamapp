@@ -33,7 +33,6 @@ import com.vci.vectorcamapp.core.presentation.components.button.ActionButton
 import com.vci.vectorcamapp.core.presentation.components.form.DatePickerField
 import com.vci.vectorcamapp.core.presentation.components.form.DropdownField
 import com.vci.vectorcamapp.core.presentation.components.form.TextEntryField
-import com.vci.vectorcamapp.core.presentation.components.form.ToggleField
 import com.vci.vectorcamapp.core.presentation.components.header.ScreenHeader
 import com.vci.vectorcamapp.core.presentation.components.pill.InfoPill
 import com.vci.vectorcamapp.core.presentation.components.tooltip.Tooltip
@@ -396,16 +395,17 @@ fun IntakeScreen(
                     }
                 }
 
-                state.surveillanceForm?.let { surveillanceForm ->
-                    TextEntryField(
-                        label = "Number of People Living in the House",
-                        value = if (surveillanceForm.numPeopleSleptInHouse < 0)
-                            ""
-                        else
-                            surveillanceForm.numPeopleSleptInHouse.toString(),
-                        onValueChange = { onAction(IntakeAction.EnterNumPeopleSleptInHouse(it)) },
-                        singleLine = true,
-                        error = state.intakeErrors.numPeopleSleptInHouse,
+                DropdownField(
+                    label = "Rural or Urban area?",
+                    options = IntakeDropdownOptions.AreaType.entries,
+                    selectedOption = IntakeDropdownOptions.AreaType.entries.firstOrNull { it.label == state.areaType },
+                    onOptionSelected = { onAction(IntakeAction.SelectAreaType(it.label)) },
+                    error = null
+                ) { areaType ->
+                    Text(
+                        text = areaType.label,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colors.textPrimary
                     )
                 }
 
@@ -466,100 +466,6 @@ fun IntakeScreen(
                                 color = MaterialTheme.colors.textPrimary
                             )
                         }
-                    }
-                }
-            }
-        }
-
-        state.surveillanceForm?.let { surveillanceForm ->
-            item {
-                IntakeTile(
-                    title = "Surveillance Form",
-                    iconPainter = painterResource(id = R.drawable.ic_clipboard),
-                    iconDescription = "Surveillance Form Icon"
-                ) {
-                    ToggleField(
-                        label = "Was IRS conducted in this household?",
-                        checked = surveillanceForm.wasIrsConducted,
-                        onCheckedChange = {
-                            onAction(
-                                IntakeAction.ToggleIrsConducted(
-                                    it
-                                )
-                            )
-                        })
-
-                    surveillanceForm.monthsSinceIrs?.let { monthsSinceIrs ->
-                        TextEntryField(
-                            label = "Months Since IRS",
-                            value = if (monthsSinceIrs < 0)
-                                ""
-                            else
-                                monthsSinceIrs.toString(),
-                            onValueChange = { onAction(IntakeAction.EnterMonthsSinceIrs(it)) },
-                            singleLine = true,
-                            error = state.intakeErrors.monthsSinceIrs,
-                        )
-                    }
-
-                    TextEntryField(
-                        label = "Number of LLINs Available",
-                        value = if (surveillanceForm.numLlinsAvailable < 0)
-                            ""
-                        else
-                            surveillanceForm.numLlinsAvailable.toString(),
-                        onValueChange = { onAction(IntakeAction.EnterNumLlinsAvailable(it)) },
-                        singleLine = true,
-                        error = state.intakeErrors.numLlinsAvailable,
-                    )
-
-                    surveillanceForm.llinType?.let { current ->
-                        DropdownField(
-                            label = "LLIN Type",
-                            options = IntakeDropdownOptions.LlinTypeOption.entries,
-                            selectedOption = IntakeDropdownOptions.LlinTypeOption.entries.firstOrNull { it.label == current },
-                            onOptionSelected = {
-                                onAction(IntakeAction.SelectLlinType(it))
-                            },
-                            error = state.intakeErrors.llinType,
-                        ) { llinType ->
-                            Text(
-                                text = llinType.label,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colors.textPrimary
-                            )
-                        }
-                    }
-
-                    surveillanceForm.llinBrand?.let { current ->
-                        DropdownField(
-                            label = "LLIN Brand",
-                            options = IntakeDropdownOptions.LlinBrandOption.entries.filter { it.type?.label == surveillanceForm.llinType || it.type == null},
-                            selectedOption = IntakeDropdownOptions.LlinBrandOption.entries.firstOrNull { it.label == current },
-                            onOptionSelected = {
-                                onAction(IntakeAction.SelectLlinBrand(it))
-                            },
-                            error = state.intakeErrors.llinBrand,
-                        ) { llinBrand ->
-                            Text(
-                                text = llinBrand.label,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colors.textPrimary
-                            )
-                        }
-                    }
-
-                    surveillanceForm.numPeopleSleptUnderLlin?.let { numPeopleSleptUnderLlin ->
-                        TextEntryField(
-                            label = "Number of People who Slept Under LLIN",
-                            value = if (numPeopleSleptUnderLlin < 0)
-                                ""
-                            else
-                                numPeopleSleptUnderLlin.toString(),
-                            onValueChange = { onAction(IntakeAction.EnterNumPeopleSleptUnderLlin(it)) },
-                            singleLine = true,
-                            error = state.intakeErrors.numPeopleSleptUnderLlin,
-                        )
                     }
                 }
             }

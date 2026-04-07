@@ -35,7 +35,7 @@ fun LandingScreen(
     modifier: Modifier = Modifier
 ) {
     ScreenHeader(
-        title = "Welcome to VectorCam!",
+        title = "Welcome to LarvaCam!",
         subtitle = "Program: ${state.enrolledProgram.name}",
         modifier = modifier.testTag(LandingTestTags.SCREEN),
         trailingIcon = {
