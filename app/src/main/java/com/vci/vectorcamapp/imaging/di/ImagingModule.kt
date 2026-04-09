@@ -37,7 +37,7 @@ object ImagingModule {
     @ViewModelScoped
     @SpeciesClassifier
     fun provideSpeciesClassifier(@ApplicationContext context: Context): SpecimenClassifier {
-        return TfLiteSpecimenClassifier(context, "species.tflite", "TFLiteSpeciesClassifierThread")
+        return TfLiteSpecimenClassifier(context, "lcspeciesv1.tflite", "TFLiteSpeciesClassifierThread")
     }
 
     @Provides
