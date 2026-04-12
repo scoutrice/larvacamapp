@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">vectorcamapp</string>
+    <string name="app_name">larvacamapp</string>
 
     <!-- Error fallback -->
     <string name="error_fallback">An unknown error occurred. Please try again or contact support if the issue persists.</string>
