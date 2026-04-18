@@ -51,89 +51,137 @@ class SurveillanceImagingWorkflow @Inject constructor(
     }
 
     override suspend fun processCapturedFrame(bitmap: Bitmap): Result<CapturedFrameProcessingResult, ImagingError> {
-        val captureDetectorResults = inferenceRepository.detectSpecimen(bitmap)
+        val cropSize = 2448
+        val centerX = bitmap.width / 2
+        val centerY = bitmap.height / 2
 
-        when (captureDetectorResults.size) {
-            0 -> return Result.Error(ImagingError.NO_SPECIMEN_FOUND)
-            1 -> {
-                val captureDetectorResult = captureDetectorResults.first()
-                val topLeftXFloat =
-                    captureDetectorResult.bboxTopLeftX * bitmap.width
-                val topLeftYFloat =
-                    captureDetectorResult.bboxTopLeftY * bitmap.height
-                val widthFloat = captureDetectorResult.bboxWidth * bitmap.width
-                val heightFloat = captureDetectorResult.bboxHeight * bitmap.height
+        val cropLeft = (centerX - cropSize / 2).coerceAtLeast(0)
+        val cropTop = (centerY - cropSize / 2).coerceAtLeast(0)
+        val cropWidth = cropSize.coerceAtMost(bitmap.width - cropLeft)
+        val cropHeight = cropSize.coerceAtMost(bitmap.height - cropTop)
 
-                val topLeftXAbsolute = topLeftXFloat.toInt()
-                val topLeftYAbsolute = topLeftYFloat.toInt()
-                val widthAbsolute =
-                    (widthFloat + (topLeftXFloat - topLeftXAbsolute)).toInt()
-                val heightAbsolute =
-                    (heightFloat + (topLeftYFloat - topLeftYAbsolute)).toInt()
+        val croppedBitmap = Bitmap.createBitmap(bitmap, cropLeft, cropTop, cropWidth, cropHeight)
 
-                val clampedTopLeftX =
-                    topLeftXAbsolute.coerceIn(0, bitmap.width - 1)
-                val clampedTopLeftY =
-                    topLeftYAbsolute.coerceIn(0, bitmap.height - 1)
-                val clampedWidth =
-                    widthAbsolute.coerceIn(1, bitmap.width - clampedTopLeftX)
-                val clampedHeight =
-                    heightAbsolute.coerceIn(1, bitmap.height - clampedTopLeftY)
+        var (speciesResult, sexResult, abdomenStatusResult) = inferenceRepository.classifySpecimen(croppedBitmap)
 
-                if (clampedWidth > 0 && clampedHeight > 0) {
-                    val croppedBitmap = Bitmap.createBitmap(
-                        bitmap,
-                        clampedTopLeftX,
-                        clampedTopLeftY,
-                        clampedWidth,
-                        clampedHeight
-                    )
+        val speciesIndex = speciesResult?.logits?.let { logits -> logits.indexOf(logits.max()) }
+        var sexIndex = sexResult?.logits?.let { logits -> logits.indexOf(logits.max()) }
+        var abdomenStatusIndex = abdomenStatusResult?.logits?.let { logits -> logits.indexOf(logits.max()) }
 
-                    var (speciesResult, sexResult, abdomenStatusResult) = inferenceRepository.classifySpecimen(croppedBitmap)
+        val normalizedTopLeftX = cropLeft.toFloat() / bitmap.width
+        val normalizedTopLeftY = cropTop.toFloat() / bitmap.height
+        val normalizedWidth = cropWidth.toFloat() / bitmap.width
+        val normalizedHeight = cropHeight.toFloat() / bitmap.height
 
-                    val speciesIndex = speciesResult?.logits?.let { logits -> logits.indexOf(logits.max()) }
-                    var sexIndex = sexResult?.logits?.let { logits -> logits.indexOf(logits.max()) }
-                    var abdomenStatusIndex = abdomenStatusResult?.logits?.let { logits -> logits.indexOf(logits.max()) }
-
-                    if (speciesResult?.logits == null || speciesIndex == SpeciesLabel.NON_MOSQUITO.ordinal) {
-                        sexResult = null
-                        sexIndex = null
-                    }
-                    if (sexResult?.logits == null || sexIndex == SexLabel.MALE.ordinal) {
-                        abdomenStatusResult = null
-                        abdomenStatusIndex = null
-                    }
-
-                    return Result.Success(
+        return Result.Success(
                         CapturedFrameProcessingResult(
                             species = speciesIndex?.let { index -> SpeciesLabel.entries[index].label },
                             sex = sexIndex?.let { index -> SexLabel.entries[index].label },
                             abdomenStatus = abdomenStatusIndex?.let { index -> AbdomenStatusLabel.entries[index].label },
                             capturedInferenceResult = InferenceResult(
-                                bboxTopLeftX = captureDetectorResult.bboxTopLeftX,
-                                bboxTopLeftY = captureDetectorResult.bboxTopLeftY,
-                                bboxWidth = captureDetectorResult.bboxWidth,
-                                bboxHeight = captureDetectorResult.bboxHeight,
-                                bboxConfidence = captureDetectorResult.bboxConfidence,
-                                bboxClassId = captureDetectorResult.bboxClassId,
+                                bboxTopLeftX = normalizedTopLeftX,
+                                bboxTopLeftY = normalizedTopLeftY,
+                                bboxWidth = normalizedWidth,
+                                bboxHeight = normalizedHeight,
+                                bboxConfidence = 0f,
+                                bboxClassId = -1,
                                 speciesLogits = speciesResult?.logits,
-                                sexLogits = sexResult?.logits,
-                                abdomenStatusLogits = abdomenStatusResult?.logits,
-                                bboxDetectionDuration = captureDetectorResult.bboxDetectionDuration,
+                                sexLogits = null,
+                                abdomenStatusLogits = null,
+                                bboxDetectionDuration = 0L,
                                 speciesInferenceDuration = speciesResult?.inferenceDuration,
-                                sexInferenceDuration = sexResult?.inferenceDuration,
-                                abdomenStatusInferenceDuration = abdomenStatusResult?.inferenceDuration,
+                                sexInferenceDuration = null,
+                                abdomenStatusInferenceDuration = null,
                             )
                         )
-                    )
+        )
 
-                } else {
-                    return Result.Error(ImagingError.PROCESSING_ERROR)
-                }
-            }
+        //val captureDetectorResults = inferenceRepository.detectSpecimen(bitmap)
 
-            else -> return Result.Error(ImagingError.MULTIPLE_SPECIMENS_FOUND)
-        }
+//        when {
+//            // 0 -> return Result.Error(ImagingError.NO_SPECIMEN_FOUND)
+//            (captureDetectorResults.size <= 1) -> {
+//                val captureDetectorResult = captureDetectorResults.first()
+//                val topLeftXFloat =
+//                    captureDetectorResult.bboxTopLeftX * bitmap.width
+//                val topLeftYFloat =
+//                    captureDetectorResult.bboxTopLeftY * bitmap.height
+//                val widthFloat = captureDetectorResult.bboxWidth * bitmap.width
+//                val heightFloat = captureDetectorResult.bboxHeight * bitmap.height
+//
+//                val topLeftXAbsolute = topLeftXFloat.toInt()
+//                val topLeftYAbsolute = topLeftYFloat.toInt()
+//                val widthAbsolute =
+//                    (widthFloat + (topLeftXFloat - topLeftXAbsolute)).toInt()
+//                val heightAbsolute =
+//                    (heightFloat + (topLeftYFloat - topLeftYAbsolute)).toInt()
+//
+//                val clampedTopLeftX =
+//                    topLeftXAbsolute.coerceIn(0, bitmap.width - 1)
+//                val clampedTopLeftY =
+//                    topLeftYAbsolute.coerceIn(0, bitmap.height - 1)
+//                val clampedWidth =
+//                    widthAbsolute.coerceIn(1, bitmap.width - clampedTopLeftX)
+//                val clampedHeight =
+//                    heightAbsolute.coerceIn(1, bitmap.height - clampedTopLeftY)
+//
+//                if (clampedWidth > 0 && clampedHeight > 0) {
+//                    val croppedBitmap = Bitmap.createBitmap(
+//                        bitmap,
+//                        clampedTopLeftX,
+//                        clampedTopLeftY,
+//                        clampedWidth,
+//                        clampedHeight
+//                    )
+//
+//                    var (speciesResult, sexResult, abdomenStatusResult) = inferenceRepository.classifySpecimen(croppedBitmap)
+//
+//                    val speciesIndex = speciesResult?.logits?.let { logits -> logits.indexOf(logits.max()) }
+//                    var sexIndex = sexResult?.logits?.let { logits -> logits.indexOf(logits.max()) }
+//                    var abdomenStatusIndex = abdomenStatusResult?.logits?.let { logits -> logits.indexOf(logits.max()) }
+//
+//                    sexResult = null
+//                    abdomenStatusResult = null
+//
+////                    if (speciesResult?.logits == null || speciesIndex == SpeciesLabel.NON_MOSQUITO.ordinal) {
+////                        sexResult = null
+////                        sexIndex = null
+////                    }
+////                    if (sexResult?.logits == null || sexIndex == SexLabel.MALE.ordinal) {
+////                        abdomenStatusResult = null
+////                        abdomenStatusIndex = null
+////                    }
+//
+//                    return Result.Success(
+//                        CapturedFrameProcessingResult(
+//                            species = speciesIndex?.let { index -> SpeciesLabel.entries[index].label },
+//                            sex = sexIndex?.let { index -> SexLabel.entries[index].label },
+//                            abdomenStatus = abdomenStatusIndex?.let { index -> AbdomenStatusLabel.entries[index].label },
+//                            capturedInferenceResult = InferenceResult(
+//                                bboxTopLeftX = captureDetectorResult.bboxTopLeftX,
+//                                bboxTopLeftY = captureDetectorResult.bboxTopLeftY,
+//                                bboxWidth = captureDetectorResult.bboxWidth,
+//                                bboxHeight = captureDetectorResult.bboxHeight,
+//                                bboxConfidence = captureDetectorResult.bboxConfidence,
+//                                bboxClassId = captureDetectorResult.bboxClassId,
+//                                speciesLogits = speciesResult?.logits,
+//                                sexLogits = sexResult?.logits,
+//                                abdomenStatusLogits = abdomenStatusResult?.logits,
+//                                bboxDetectionDuration = captureDetectorResult.bboxDetectionDuration,
+//                                speciesInferenceDuration = speciesResult?.inferenceDuration,
+//                                sexInferenceDuration = sexResult?.inferenceDuration,
+//                                abdomenStatusInferenceDuration = abdomenStatusResult?.inferenceDuration,
+//                            )
+//                        )
+//                    )
+//
+//                } else {
+//                    return Result.Error(ImagingError.PROCESSING_ERROR)
+//                }
+//            }
+//
+//            else -> return Result.Error(ImagingError.MULTIPLE_SPECIMENS_FOUND)
+//        }
     }
 
     override fun close() {

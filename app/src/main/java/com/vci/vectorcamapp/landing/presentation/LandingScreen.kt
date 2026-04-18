@@ -60,7 +60,7 @@ fun LandingScreen(
                 ) {
                     LandingActionTile(
                         title = "New Surveillance Session",
-                        description = "Begin a new household visit and capture mosquito images.",
+                        description = "Begin a new larval surveillance session and capture larvae images.",
                         icon = painterResource(R.drawable.ic_specimen),
                         onClick = { onAction(LandingAction.StartNewSurveillanceSession) },
                         testTag = LandingTestTags.TILE_NEW_SURVEILLANCE

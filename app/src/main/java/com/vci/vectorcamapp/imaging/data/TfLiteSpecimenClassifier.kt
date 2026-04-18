@@ -165,10 +165,10 @@ class TfLiteSpecimenClassifier(
         )
         resizedMatrix.convertTo(resizedMatrix, CvType.CV_32F, PIXEL_NORMALIZATION_SCALE.toDouble())
 
-        val meanMatrix = Mat(resizedMatrix.size(), CvType.CV_32FC3, NORMALIZE_MEAN)
-        val stdDevMatrix = Mat(resizedMatrix.size(), CvType.CV_32FC3, NORMALIZE_STDDEV)
-        Core.subtract(resizedMatrix, meanMatrix, resizedMatrix)
-        Core.divide(resizedMatrix, stdDevMatrix, resizedMatrix)
+//        val meanMatrix = Mat(resizedMatrix.size(), CvType.CV_32FC3, NORMALIZE_MEAN)
+//        val stdDevMatrix = Mat(resizedMatrix.size(), CvType.CV_32FC3, NORMALIZE_STDDEV)
+//        Core.subtract(resizedMatrix, meanMatrix, resizedMatrix)
+//        Core.divide(resizedMatrix, stdDevMatrix, resizedMatrix)
 
         return resizedMatrix
     }

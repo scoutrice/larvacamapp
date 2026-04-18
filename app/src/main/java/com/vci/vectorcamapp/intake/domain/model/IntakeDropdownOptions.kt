@@ -5,6 +5,7 @@ object IntakeDropdownOptions {
     enum class CollectionMethodOption(val label: String) {
         OVITRAP("Ovitrap"),
         MANUAL_COLLECTION("Manual collection"),
+        INSECTARY("Insectary"),
         OTHER("Other")
     }
 

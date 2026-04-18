@@ -512,26 +512,26 @@ fun ImagingScreen(
                                         if (state.currentSpecimenImage.species != null) {
                                             Text(
                                                 text = "Species: ${state.currentSpecimenImage.species}",
-                                                style = MaterialTheme.typography.bodyMedium,
+                                                style = MaterialTheme.typography.titleLarge,
                                                 color = MaterialTheme.colors.textPrimary
                                             )
                                         }
 
-                                        if (state.currentSpecimenImage.sex != null) {
-                                            Text(
-                                                text = "Sex: ${state.currentSpecimenImage.sex}",
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colors.textPrimary
-                                            )
-                                        }
-
-                                        if (state.currentSpecimenImage.abdomenStatus != null) {
-                                            Text(
-                                                text = "Abdomen Status: ${state.currentSpecimenImage.abdomenStatus}",
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colors.textPrimary
-                                            )
-                                        }
+//                                        if (state.currentSpecimenImage.sex != null) {
+//                                            Text(
+//                                                text = "Sex: ${state.currentSpecimenImage.sex}",
+//                                                style = MaterialTheme.typography.bodyMedium,
+//                                                color = MaterialTheme.colors.textPrimary
+//                                            )
+//                                        }
+//
+//                                        if (state.currentSpecimenImage.abdomenStatus != null) {
+//                                            Text(
+//                                                text = "Abdomen Status: ${state.currentSpecimenImage.abdomenStatus}",
+//                                                style = MaterialTheme.typography.bodyMedium,
+//                                                color = MaterialTheme.colors.textPrimary
+//                                            )
+//                                        }
                                     }
 
                                     Button(

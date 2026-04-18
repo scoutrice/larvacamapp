@@ -45,8 +45,8 @@ fun SplashScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Image(
-                painter = painterResource(R.drawable.splash_logo),
-                contentDescription = "Splash logo",
+                painter = painterResource(R.drawable.larvasplash_logo),
+                contentDescription = "Larva Splash logo",
                 modifier = Modifier
                     .width(screenWidthFraction(0.8f))
                     .wrapContentHeight()
